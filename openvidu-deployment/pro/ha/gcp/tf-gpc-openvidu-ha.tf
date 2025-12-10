@@ -288,7 +288,7 @@ resource "google_compute_instance" "openvidu_master_node_1" {
 
   boot_disk {
     initialize_params {
-      image = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts"
+      image = local.ubuntu_image_master
       size  = var.masterNodesDiskSize
       type  = "pd-standard"
     }
@@ -341,7 +341,7 @@ resource "google_compute_instance" "openvidu_master_node_2" {
 
   boot_disk {
     initialize_params {
-      image = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts"
+      image = local.ubuntu_image_master
       size  = var.masterNodesDiskSize
       type  = "pd-standard"
     }
@@ -396,7 +396,7 @@ resource "google_compute_instance" "openvidu_master_node_3" {
 
   boot_disk {
     initialize_params {
-      image = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts"
+      image = local.ubuntu_image_master
       size  = var.masterNodesDiskSize
       type  = "pd-standard"
     }
@@ -451,7 +451,7 @@ resource "google_compute_instance" "openvidu_master_node_4" {
 
   boot_disk {
     initialize_params {
-      image = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts"
+      image = local.ubuntu_image_master
       size  = var.masterNodesDiskSize
       type  = "pd-standard"
     }
@@ -840,7 +840,7 @@ resource "google_compute_instance_template" "media_node_template" {
   tags         = [lower("${var.stackName}-media-node")]
 
   disk {
-    source_image = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts"
+    source_image = local.ubuntu_image_master
     auto_delete  = true
     boot         = true
     disk_size_gb = 100
@@ -931,6 +931,12 @@ resource "google_compute_region_autoscaler" "media_node_autoscaler" {
 # ------------------------- local values -------------------------
 
 locals {
+  is_master_arm = startswith(var.masterNodesInstanceType, "c4a-") || startswith(var.masterNodesInstanceType, "t2a-") || startswith(var.masterNodesInstanceType, "n4a-") || startswith(var.masterNodesInstanceType, "a4x-")
+  is_media_arm  = startswith(var.mediaNodeInstanceType, "c4a-") || startswith(var.mediaNodeInstanceType, "t2a-") || startswith(var.mediaNodeInstanceType, "n4a-") || startswith(var.mediaNodeInstanceType, "a4x-")
+
+  ubuntu_image_master = local.is_master_arm ? "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts-arm64" : "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts"
+  ubuntu_image_media  = local.is_media_arm ? "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts-arm64" : "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts"
+
   isEmptyAppData     = var.GCSAppDataBucketName == ""
   isEmptyClusterData = var.GCSClusterDataBucketName == ""
 
@@ -952,8 +958,8 @@ apt-get update && apt-get install -y \
   lsb-release \
   openssl
 
-wget https://github.com/mikefarah/yq/releases/download/$${YQ_VERSION}/yq_linux_amd64.tar.gz -O - |\
-tar xz && mv yq_linux_amd64 /usr/bin/yq
+wget https://github.com/mikefarah/yq/releases/download/$${YQ_VERSION}/yq_linux_${local.is_master_arm ? "arm64" : "amd64"}.tar.gz -O - |\
+tar xz && mv yq_linux_${local.is_master_arm ? "arm64" : "amd64"} /usr/bin/yq
 
 # Configure gcloud with instance service account
 gcloud auth activate-service-account --key-file=/dev/null 2>/dev/null || true
